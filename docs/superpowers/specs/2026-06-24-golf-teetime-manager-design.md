@@ -121,7 +121,7 @@
 ## 11. 기술 스택
 
 - **Vercel**: Next.js (TypeScript) — 카카오 스킬서버(API Routes) (+ 차기 웹뷰)
-- **워커**: Node.js (TypeScript) + Playwright — Render/Fly/Railway 중 택1
+- **워커**: Node.js (TypeScript) + Playwright — **기본값 Render** (콜드스타트는 DB 저장 세션 재사용으로 완화). 필요 시 Fly/Railway로 교체 가능
 - **DB**: Supabase (Postgres)
 - **NLU**: Claude API (`claude-haiku-4-5`)
 - **암호화**: AES-256-GCM (Node `crypto`)
