@@ -13,8 +13,10 @@ export function encryptSecret(plain: string, keyB64: string): string {
 
 export function decryptSecret(blob: string, keyB64: string): string {
   const key = Buffer.from(keyB64, 'base64');
-  const [v, ivB64, tagB64, ctB64] = blob.split(':');
-  if (v !== 'v1') throw new Error('unsupported ciphertext version');
+  if (key.length !== 32) throw new Error('ENC_KEY must be 32 bytes (base64)');
+  const parts = blob.split(':');
+  if (parts.length !== 4 || parts[0] !== 'v1') throw new Error('unsupported or malformed ciphertext');
+  const [, ivB64, tagB64, ctB64] = parts;
   const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(ivB64, 'base64'));
   decipher.setAuthTag(Buffer.from(tagB64, 'base64'));
   return Buffer.concat([decipher.update(Buffer.from(ctB64, 'base64')), decipher.final()]).toString('utf8');
