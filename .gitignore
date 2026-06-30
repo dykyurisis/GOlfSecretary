@@ -26,6 +26,9 @@ test-results/
 .cache/
 .playwright-mcp/
 
+# M0 spike output (may contain page dumps)
+.m0-out/
+
 # OS / editor
 .DS_Store
 Thumbs.db
