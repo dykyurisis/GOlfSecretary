@@ -8,8 +8,9 @@ export default async function Home() {
   if (!user) redirect('/login');
 
   // Allowlist is enforced in the DB; is_allowed_user() reflects the allowed_users table.
+  // Fail closed: only render when explicitly allowed (RPC error/null -> redirect).
   const { data: allow } = await supabase.rpc('is_allowed_user');
-  if (allow === false) redirect('/not-allowed');
+  if (allow !== true) redirect('/not-allowed');
 
   return (
     <main>
