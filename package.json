@@ -5,9 +5,26 @@
   "type": "module",
   "description": "Golf tee-time manager — M0 spike workspace",
   "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest run",
+    "seed": "node --env-file=.env.seed scripts/seed.mjs",
     "m0": "node --env-file=.env scripts/m0-spike.mjs"
   },
   "dependencies": {
-    "playwright": "^1.61.1"
+    "@supabase/ssr": "^0.12.0",
+    "@supabase/supabase-js": "^2.110.0",
+    "next": "^15.5.19",
+    "playwright": "^1.61.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
   }
 }
