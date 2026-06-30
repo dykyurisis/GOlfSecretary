@@ -24,6 +24,7 @@ yarn-error.log*
 playwright-report/
 test-results/
 .cache/
+.playwright-mcp/
 
 # OS / editor
 .DS_Store
