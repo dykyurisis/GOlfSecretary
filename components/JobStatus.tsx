@@ -26,10 +26,11 @@ export default function JobStatus({ jobId }: { jobId: string }) {
 
   if (error) return <p>조회 실패: {error}</p>;
   if (status !== 'done') return <p>조회 중… ({status})</p>;
-  if (!slots || slots.length === 0) return <p>해당 날짜에 빈 티타임이 없습니다.</p>;
+  const open = (slots ?? []).filter((s) => s.slotsAvailable > 0);
+  if (open.length === 0) return <p>해당 날짜에 빈 티타임이 없습니다. (조회된 티타임 {slots?.length ?? 0}개는 모두 만석)</p>;
   return (
     <ul>
-      {slots.filter((s) => s.slotsAvailable > 0).map((s, i) => (
+      {open.map((s, i) => (
         <li key={i}>{s.date} {s.time} · {s.course} · 빈자리 {s.slotsAvailable}</li>
       ))}
     </ul>
