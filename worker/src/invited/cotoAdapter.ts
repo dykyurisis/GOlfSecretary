@@ -25,7 +25,9 @@ async function dismissModals(page: import('playwright').Page) {
 /** Returns { slots, authMode } for the given user's Coto account on the requested date (mm/dd or null = all). */
 export async function lookupCoto(userId: string, clubId: string, mmdd: string | null): Promise<{ slots: Slot[]; authMode: string }> {
   const { user, pw } = await loadCreds(userId, clubId);
-  const browser = await chromium.launch({ headless: true });
+  // --no-sandbox: Chromium refuses to run as root inside a container without it.
+  // --disable-dev-shm-usage: Render/containers give a tiny /dev/shm; avoids Chromium OOM crashes.
+  const browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
   const ctx: BrowserContext = await browser.newContext({ userAgent: UA, viewport: { width: 1280, height: 900 }, locale: 'en-US' });
   const authMode = 'full_login';
   try {

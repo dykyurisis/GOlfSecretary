@@ -1,0 +1,32 @@
+# Render Blueprint — Playwright worker for the golf tee-time manager.
+#
+# Create it: Render Dashboard → New → Blueprint → select this repo/branch.
+# Render reads this file, builds worker/Dockerfile, and prompts for the four
+# secret env vars below (sync:false = you paste the values, they are NOT in git).
+#
+# The Next.js dashboard is deployed separately on Vercel — this Blueprint is ONLY
+# the worker. See worker/DEPLOY.md for the full step-by-step and the merge order.
+services:
+  - type: web
+    name: golf-teetime-worker
+    runtime: docker
+    rootDir: worker            # build context + Dockerfile live in worker/
+    dockerfilePath: ./Dockerfile
+    region: ohio               # colocate with Supabase (us-east-2 / Ohio) to cut latency
+    plan: starter              # keeps the instance warm. PRD requires always-on.
+                               # Alternative: plan: free (spins down after ~15m idle →
+                               # cold starts break the fire-and-forget POST /run trigger;
+                               # if you use free, add a cron ping to /health to stay warm).
+    healthCheckPath: /health
+    autoDeploy: false          # flip to true once merged to main to redeploy on push
+    envVars:
+      # Paste these in the Render dashboard when prompted (never commit real values).
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: ENC_KEY            # MUST match the key used to seed the encrypted credentials
+        sync: false
+      - key: WORKER_SHARED_SECRET  # MUST match the dashboard's WORKER_SHARED_SECRET (Vercel)
+        sync: false
+      # PORT is provided by Render automatically; server.ts reads process.env.PORT.
