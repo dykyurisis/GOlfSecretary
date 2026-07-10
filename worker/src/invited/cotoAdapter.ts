@@ -1,7 +1,7 @@
 import { chromium, type BrowserContext } from 'playwright';
 import { db } from '../lib/supabase.ts';
 import { decryptSecret } from '../lib/crypto.ts';
-import { parseTeeSheet, type Slot } from './parseTeeSheet.ts';
+import { parseGridRow, type Slot } from './parseTeeSheet.ts';
 
 const LOGIN = 'https://members.invitedclubs.com/club/scripts/login/login.asp';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36';
@@ -22,8 +22,24 @@ async function dismissModals(page: import('playwright').Page) {
   await page.evaluate(() => document.querySelectorAll('.ui-widget-overlay').forEach((e) => e.remove())).catch(() => {});
 }
 
-/** Returns { slots, authMode } for the given user's Coto account on the requested date (mm/dd or null = all). */
-export async function lookupCoto(userId: string, clubId: string, mmdd: string | null): Promise<{ slots: Slot[]; authMode: string }> {
+// "07:20 AM" -> minutes since midnight (for sorting the merged multi-course list).
+function timeToMinutes(t: string): number {
+  const m = t.match(/(\d{1,2}):(\d{2})\s*([AP]M)/i);
+  if (!m) return 0;
+  let h = parseInt(m[1], 10) % 12;
+  if (/PM/i.test(m[3])) h += 12;
+  return h * 60 + parseInt(m[2], 10);
+}
+
+/**
+ * Returns { slots, authMode } for the given user's Coto account on the requested date.
+ * Drives the CCTTWEB "Available Tee Times" flow: click the date tab (#Tab-YYYYMMDD),
+ * then for each course in the (session-dynamic) course dropdown select it BY LABEL and
+ * scrape the #SheetDetails-YYYYMMDD grid. Returns every scraped tee time (available +
+ * full) across both courses, sorted by time; the dashboard filters to slotsAvailable>0.
+ * dateISO is "YYYY-MM-DD". A date outside the booking window (no tab) yields [].
+ */
+export async function lookupCoto(userId: string, clubId: string, dateISO: string): Promise<{ slots: Slot[]; authMode: string }> {
   const { user, pw } = await loadCreds(userId, clubId);
   // --no-sandbox: Chromium refuses to run as root inside a container without it.
   // --disable-dev-shm-usage: Render/containers give a tiny /dev/shm; avoids Chromium OOM crashes.
@@ -48,9 +64,52 @@ export async function lookupCoto(userId: string, clubId: string, mmdd: string | 
     await page.waitForTimeout(3500);
     await dismissModals(page);
 
-    const html = await page.content();
-    let slots = parseTeeSheet(html);
-    if (mmdd) slots = slots.filter((s) => s.date.endsWith(mmdd));
+    // Navigate to the requested date's tab. No tab => date is outside the booking window.
+    const ymd = dateISO.replace(/-/g, ''); // "2026-07-23" -> "20260723"
+    const tab = `#Tab-${ymd}`;
+    if ((await page.locator(tab).count()) === 0) return { slots: [], authMode };
+    await page.click(tab, { timeout: 8000 });
+    await page.waitForSelector(`#SheetDetails-${ymd}`, { timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(1500);
+
+    // Read the course dropdown IN-SESSION (option values are dynamic every login) and
+    // iterate all courses, selecting by value (label matching is whitespace-fragile).
+    const options: { value: string; text: string }[] = await page.$$eval('#cc-course-selection option', (os) =>
+      (os as HTMLOptionElement[]).map((o) => ({ value: o.value, text: (o.textContent || '').trim() })).filter((o) => o.text));
+    const defaultVal = await page.$eval('#cc-course-selection', (el) => (el as HTMLSelectElement).value).catch(() => '');
+    const gridSel = `#SheetDetails-${ymd} > tbody > tr`;
+    const all: Slot[] = [];
+    const scrapeGrid = async () => {
+      const rowTexts: string[] = await page.$$eval(gridSel, (trs) => trs.map((tr) => (tr.textContent || '').replace(/\s+/g, ' ').trim()).filter(Boolean));
+      for (const rt of rowTexts) { const s = parseGridRow(rt); if (s) all.push(s); }
+    };
+    // The default course grid is already loaded — scrape it first (re-selecting it would
+    // kick off a competing reload that races the next course switch).
+    await scrapeGrid();
+    for (const opt of options) {
+      if (!opt.value || opt.value === defaultVal) continue;
+      const others = options.filter((o) => o.value !== opt.value).map((o) => o.text);
+      await page.selectOption('#cc-course-selection', opt.value).catch(() => {});
+      // wait until the grid is PURELY the selected course (target present, others gone)
+      await page.waitForFunction(
+        ([id, target, other]) => {
+          const t = document.querySelector(id);
+          if (!t) return false;
+          const txt = (t.textContent || '').toUpperCase();
+          return txt.includes(target.toUpperCase()) && other.every((o) => !txt.includes(o.toUpperCase()));
+        },
+        [`#SheetDetails-${ymd}`, opt.text, others] as const,
+        { timeout: 12000 },
+      ).catch(() => {});
+      await page.waitForTimeout(1200);
+      await scrapeGrid();
+    }
+
+    // Dedup (belt-and-suspenders if a reload appends rather than replaces) + sort by time.
+    const seen = new Set<string>();
+    const slots = all
+      .filter((s) => { const k = `${s.course}|${s.date}|${s.time}`; if (seen.has(k)) return false; seen.add(k); return true; })
+      .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time) || a.course.localeCompare(b.course));
     return { slots, authMode };
   } finally {
     await ctx.close();

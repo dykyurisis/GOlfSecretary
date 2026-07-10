@@ -12,8 +12,9 @@ export async function processJob(jobId: string, workerId: string): Promise<void>
   try {
     if (job.type !== 'lookup') throw new Error('unsupported job type: ' + job.type);
     const { club_id, params } = job;
-    const mmdd: string | null = params?.mmdd ?? null;
-    const { slots, authMode } = await lookupCoto(job.user_id, club_id, mmdd);
+    const dateISO: string | null = params?.date ?? null; // "YYYY-MM-DD"
+    if (!dateISO) throw new Error('missing date param');
+    const { slots, authMode } = await lookupCoto(job.user_id, club_id, dateISO);
     await sb.from('jobs').update({ status: 'done', result: { slots }, auth_mode: authMode, updated_at: new Date().toISOString() }).eq('id', jobId);
   } catch (e: any) {
     await sb.from('jobs').update({ status: 'failed', error: String(e?.message ?? e), updated_at: new Date().toISOString() }).eq('id', jobId);
