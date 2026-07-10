@@ -1,0 +1,22 @@
+{
+  "name": "golf-teetime-worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file=.env.worker src/server.ts",
+    "start": "node --env-file-if-exists=.env.worker src/server.ts",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.0",
+    "playwright": "^1.61.1"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  }
+}

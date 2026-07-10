@@ -1,0 +1,13 @@
+# Host node_modules are Windows/native binaries — the image rebuilds them with `npm ci`.
+node_modules
+
+# NEVER bake real secrets into the image. Render injects env vars at runtime.
+.env
+.env.*
+!.env.worker.example
+
+# Not needed at runtime.
+test
+*.md
+Dockerfile
+.dockerignore

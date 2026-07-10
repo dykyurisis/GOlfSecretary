@@ -195,7 +195,7 @@ export function parseTeeSheet(html: string): Slot[] {
   const out: Slot[] = [];
   const decode = (s: string) => s.replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
   for (const row of rows) {
-    const block = row.split(/<\/tr>/i)[0];
+    const block = row; // each split chunk already spans one row; do NOT split on </tr> (the time cell has a nested <tr>)
     const divs = [...block.matchAll(/<div(?![^>]*cc-col-action-only)[^>]*>([\s\S]*?)<\/div>/gi)]
       .map(m => decode(m[1].replace(/<[^>]+>/g, ' ')))
       .filter(Boolean);

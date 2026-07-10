@@ -18,6 +18,7 @@ export default async function Home() {
       <p>{user.email} 님 환영합니다.</p>
       <p style={{ color: '#888' }}>티타임 조회/예약은 다음 단계(M1b)에서 추가됩니다.</p>
       <form action="/auth/signout" method="post"><button type="submit">로그아웃</button></form>
+      <p><a className="btn" href="/lookup">티타임 조회</a></p>
       <BottomNav />
     </main>
   );
